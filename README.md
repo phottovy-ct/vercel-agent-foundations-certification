@@ -1,46 +1,51 @@
 # Ship It Shop — Vercel Agent Foundations Certification
 
-A Next.js e-commerce app used as the hands-on project for the Vercel Agent Foundations Certification. The storefront brand is **Ship It Shop**; the backend it talks to is the Vercel Swag Store API.
+A Next.js storefront for the Vercel Swag Store with two separate AI agents, built for the Vercel Agent Foundations Certification:
 
-The repo has two layers:
+- **Shopping agent** (storefront chat, robot icon in the header): helps customers find products, inspect individual items, and return past orders.
+- **Store admin agent** (`/admin`): helps employees investigate support, returns, inventory, and sales. It computes results in Vercel Sandbox and keeps persistent memory between conversations.
 
-1. **A working storefront** — products, search, product pages, cart, promotions, and categories, backed by the live Vercel Swag Store API. There is no local product or cart database; reads happen in Server Components and mutations go through Server Actions, so the deployment-protection secret never reaches the client.
-2. **A workshop scaffold** — the agent and workflow pieces (`lib/agent.ts`, `lib/tools.ts`, `lib/workflows/*`, the `/api/chat*` and `/api/admin/chat` routes) are intentionally left as stubs that return `501`. You implement them as you work through the certification chapters.
+Both agents use the **AI SDK** with **AI Elements** chat UIs, route model calls through **Vercel AI Gateway** (`anthropic/claude-sonnet-5`), and run as durable **Vercel Workflows**.
 
 ## Tech stack
 
 - **Next.js 16** (App Router) with **React 19**
 - **TypeScript** (`strict`), `@/*` path alias → project root
-- **Tailwind CSS v4** + **shadcn/ui** (new-york style); `lucide-react` icons
-- **AI SDK 7** (`ai`, `@ai-sdk/react`) for the agent chapters
-- **pnpm** (see `pnpm-lock.yaml`)
+- **Tailwind CSS v4** + **shadcn/ui**; `lucide-react` icons
+- **AI SDK 7** (`ai`, `@ai-sdk/react`, `@ai-sdk/workflow`) and **AI Elements**
+- **Vercel Workflows** (`workflow`) for durable agent runs and the return process
+- **Vercel Sandbox** (`@vercel/sandbox`) for the admin agent's bash tool
+- **pnpm**, Node.js 24
 
-## Getting started
+## Setup
 
-Prerequisites: Node.js 22+ and [pnpm](https://pnpm.io).
+Prerequisites: Node.js 24, [pnpm](https://pnpm.io), the [Vercel CLI](https://vercel.com/docs/cli), and a Vercel project created from this repository.
 
 ```bash
 pnpm install
-cp .env.example .env.local   # then fill in BYPASS_SECRET
+vercel link                      # pick the team and existing project
+vercel env pull .env.local       # writes API_BASE_URL, BYPASS_SECRET, VERCEL_OIDC_TOKEN
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) and confirm products load.
 
-The storefront only needs `BYPASS_SECRET` to run. The `STORE_BUSINESS_AGENT_*` variables are only required once you reach the admin-agent chapter.
+- **Shopping agent:** click the robot icon in the header.
+- **Admin agent:** go to `/admin` and sign in with the demo password `letmeinadminagent`.
+
+The local `VERCEL_OIDC_TOKEN` expires after 12 hours. Rerun `vercel env pull .env.local` to refresh it. If you use `AI_GATEWAY_API_KEY` instead, add it to `.env.local` by hand after pulling, because the pull overwrites the file.
 
 ## Environment variables
 
+`.env.local` is gitignored. Never commit it, and never give a secret a `NEXT_PUBLIC_` prefix.
+
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `BYPASS_SECRET` | Yes | Vercel deployment-protection bypass secret. Sent as the `x-vercel-protection-bypass` header on every API call. Server-only — never give it a `NEXT_PUBLIC_` prefix. |
-| `API_BASE_URL` | No | Override the backend API base URL. Defaults to `https://vercel-agentic-swag-store-api.vercel.app/api`. |
-| `STORE_BUSINESS_AGENT_URL` | Admin chat only | HTTP base URL of the deployed store-business-agent. |
-| `STORE_BUSINESS_AGENT_BASIC_USER` | Admin chat only | HTTP Basic auth user matching the agent's `ADMIN_AGENT_BASIC_USER`. |
-| `STORE_BUSINESS_AGENT_BASIC_PASSWORD` | Admin chat only | HTTP Basic auth password matching the agent's `ADMIN_AGENT_BASIC_PASSWORD`. |
-| `NEXT_PUBLIC_SITE_URL` | No | Public site URL used for metadata. Defaults to `http://localhost:3000`. |
-
-`.env.local` is gitignored; `.env.example` is the redacted template.
+| `BYPASS_SECRET` | Yes | Vercel deployment-protection bypass secret for the store API. Sent as the `x-vercel-protection-bypass` header on every API call. Server-only. Prepopulated by the Deploy button. |
+| `API_BASE_URL` | Yes | Store API base URL. Prepopulated by the Deploy button. Defaults to `https://vercel-agentic-swag-store-api.vercel.app/api`. |
+| `VERCEL_OIDC_TOKEN` | Locally | Authenticates AI Gateway and Vercel Sandbox calls during local development. Written by `vercel env pull`. On Vercel, OIDC is provided automatically. |
+| `AI_GATEWAY_API_KEY` | Optional | AI Gateway API key. When set, the AI SDK uses it instead of OIDC for model calls. Set it in `.env.local` and in the Vercel project's environment variables. |
+| `NEXT_PUBLIC_SITE_URL` | No | Public site URL used for metadata. Defaults to `http://localhost:3000`. Not a secret. |
 
 ## Scripts
 
@@ -49,7 +54,7 @@ The storefront only needs `BYPASS_SECRET` to run. The `STORE_BUSINESS_AGENT_*` v
 | `pnpm dev` | Start the dev server on http://localhost:3000 |
 | `pnpm build` | Production build |
 | `pnpm start` | Serve the production build |
-| `pnpm lint` | Wired to `eslint .`, but ESLint is not installed yet — this fails until a linter is added |
+| `pnpm exec tsc --noEmit` | Type check (`next.config.mjs` sets `typescript.ignoreBuildErrors`, so builds don't) |
 
 There is no test framework configured.
 
@@ -57,46 +62,52 @@ There is no test framework configured.
 
 ```
 app/
-  (store)/                 # storefront route group
-    page.tsx               # / — home (force-static, revalidate 60)
-    search/                # /search — dynamic, reads ?q & ?category
-    products/[param]/      # /products/:idOrSlug — SSG product detail
-  admin/                   # /admin dashboard + /admin/login (demo auth)
+  (store)/                     # storefront: home, /search, /products/[param]
+  admin/                       # /admin dashboard + /admin/login (demo auth)
   api/
-    chat/route.ts          # customer chat — workshop stub (501)
-    chat/[id]/stream/      # durable-agent stream resume — workshop stub (501)
-    admin/chat/route.ts    # admin agent chat — workshop stub (501)
-  layout.tsx               # synchronous root layout (keeps routes statically renderable)
+    chat/route.ts              # shopping agent: starts chatFlow, streams the run
+    chat/[id]/stream/route.ts  # reconnects to an existing run after a refresh
+    admin/chat/route.ts        # admin agent: starts adminChatFlow, streams the run
 lib/
-  api.ts                   # typed fetch wrapper for the Swag Store API (server-only)
-  types.ts                 # shared API/domain types
-  format.ts                # formatPrice() — API prices are integer cents
-  cart-token.ts            # httpOnly cart_token cookie helpers
-  cart-actions.ts          # 'use server' cart mutations (revalidateTag('cart'))
-  admin-auth.ts            # demo admin auth constants
-  admin-actions.ts         # 'use server' admin login/logout
-  agent.ts, tools.ts       # workshop stubs — your agent + its tools
-  workflows/               # workshop stubs — chat / admin-chat / return flows
+  api.ts                       # typed fetch wrapper for the Swag Store API (server-only)
+  agent.ts                     # ToolLoopAgent and UI message/tool types
+  instructions.ts              # shopping agent instructions
+  tools.ts                     # all agent tools (shopping, back-office, bash)
+  sandbox.ts                   # named persistent sandbox (createOrGetSandbox)
+  workflows/
+    chat-flow.ts               # shopping agent as a WorkflowAgent
+    return-flow.ts             # durable return: get order → notify → pre-authorize → file
+    admin-chat-flow.ts         # admin agent, memory loading, and its instructions
 components/
-  cart-*.tsx               # cart provider, button, and sheet (client)
-  agent-chat.tsx, admin-agent-chat.tsx, ai-elements/   # chat UI (workshop)
-  header, footer, product-*, promo-banner, category-showcase, ...
+  agent-chat.tsx               # shopping chat (AI Elements)
+  agent-product-list.tsx       # searchProducts results as product rows
+  agent-product-card.tsx       # getProductDetails result as a product card
+  admin-agent-chat.tsx         # admin chat with starting prompts and terminal output
+  ai-elements/                 # AI Elements components
 ```
 
 ## How it works
 
-### Storefront & data layer
+### Shopping agent
 
-`lib/api.ts` is a typed `fetch` wrapper that talks to the live Swag Store API and injects the `BYPASS_SECRET`. It's server-only by convention. Read endpoints use ISR (`next: { revalidate: 300, tags: [...] }`); stock checks and all cart endpoints use `cache: 'no-store'`. Cart mutations run as Server Actions and call `revalidateTag('cart')`.
+- **Tools** (`lib/tools.ts`): `searchProducts`, `getAllCategories`, `getProductDetails`, and `returnOrder`. Inputs are validated with Zod, and API failures come back as an `error` field instead of an invented result.
+- **Generative UI:** `searchProducts` results render as product rows with image, name, formatted price, and a link to the product page. `getProductDetails` renders a product card. Both show a loading state while the tool runs.
+- **Durability:** `/api/chat` starts `chatFlow` with `start()`. Model calls and each tool's `execute` (`"use step"`) are durable steps that retry on failure. The run ID goes to the client in `x-workflow-run-id`, and `/api/chat/[id]/stream` resumes the stream after a refresh without starting the work again.
+- **Returns:** `returnOrder` starts `returnFlow` in the background, so the chat isn't blocked. Each side effect is its own step, so a retry doesn't repeat a notification or refund pre-authorization that already succeeded.
 
-The cart UUID issued by the API is stored in an `httpOnly` `cart_token` cookie (`lib/cart-token.ts`). `components/cart-provider.tsx` hydrates the cart on the client at mount and uses `useOptimistic` for snappy updates, so the root layout can stay synchronous and routes can render statically.
+### Store admin agent
 
-Render modes: `/` is **static** (`force-static`, `revalidate = 60`), `/products/[param]` is **SSG** (`generateStaticParams` + `generateMetadata`), and `/search` is **dynamic** (it reads `searchParams`).
+- **Separate agent:** `/api/admin/chat` runs `adminChatFlow`, a separate `WorkflowAgent` with its own instructions and tools. None of the admin tools are registered on the shopping agent.
+- **Back-office tools:** `getSupportTickets`, `getReturnsHistory`, `getInventoryStock`, and `getSalesAnalytics` support the filters and metadata in `lib/api.ts`. `searchProducts` and `getAllCategories` give it catalog context. All data access is read-only.
+- **Sandbox:** the `bash` tool runs commands in one named, persistent Vercel Sandbox (`admin-agent-sandbox`). The agent writes fetched data to files and computes aggregates and joins with `python3` instead of estimating. Commands and their output render as a terminal block in the chat.
+- **Persistent memory:** at the start of each run, `readMemories()` loads `/vercel/sandbox/memories.md` into the instructions. The agent appends preferences, corrections, and business context with `bash`. It saves reusable report scripts to `/vercel/sandbox/scripts/` and logs them in the memory file, so recurring reports rerun against current data. The sandbox snapshots when it stops and resumes on the next request, so memory and scripts persist.
 
-### Admin
+### Storefront and data layer
 
-`/admin` is gated behind `/admin/login` with a simple demo cookie set by `lib/admin-actions.ts`. The dashboard hosts the admin agent chat UI, which posts to `/api/admin/chat`. That route — like the customer `/api/chat` routes — is a workshop stub until you complete the corresponding chapter.
+`lib/api.ts` is a typed `fetch` wrapper that talks to the live Swag Store API and injects `BYPASS_SECRET`. It's server-only. Read endpoints use ISR. Stock checks and cart endpoints use `cache: 'no-store'`. Cart mutations run as Server Actions.
+
+`/admin` is gated behind `/admin/login` with a simple demo cookie set by `lib/admin-actions.ts`.
 
 ## Deployment
 
-Deploys to [Vercel](https://vercel.com). In the project's environment variables set `BYPASS_SECRET` (and the `STORE_BUSINESS_AGENT_*` values if you've built the admin-agent chapter). `images.remotePatterns` in `next.config.mjs` is whitelisted for the Vercel Blob hosts the API serves product images from — add hostnames there if the API starts returning images from a new domain.
+Deploys to [Vercel](https://vercel.com) on every push to `main`. In the project's environment variables, keep the prepopulated `BYPASS_SECRET` and `API_BASE_URL`. AI Gateway and Sandbox authenticate with OIDC automatically on Vercel. If you use `AI_GATEWAY_API_KEY`, add it for each environment and redeploy after changing it.
