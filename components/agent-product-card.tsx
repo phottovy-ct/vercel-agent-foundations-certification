@@ -1,7 +1,7 @@
 "use client";
 
 // Created by AI (Claude Code): Generative UI exercise, based on the guide's starter card.
-// Adapted to this project's getProductDetails tool: input is `idOrSlug` (not `productId`),
+// The tool's input is `productId` (the guide's Workflows version of getProductDetails),
 // and the success shape is narrowed explicitly so `tsc --noEmit` passes.
 
 import { useState } from "react";
@@ -23,7 +23,7 @@ export function AgentProductCard({ invocation }: AgentProductCardProps) {
     invocation.state === "input-streaming" ||
     invocation.state === "input-available"
   ) {
-    const id = invocation.input?.idOrSlug;
+    const id = invocation.input?.productId;
     return (
       <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
         Looking up{id ? ` "${id}"` : ""}…
@@ -67,6 +67,7 @@ type ProductDetails = {
   category: string;
   images: string[];
   tags: string[];
+  featured: boolean;
   inStock: boolean;
 };
 
@@ -81,7 +82,7 @@ function ProductDetailsCard({
   const [isAdded, setIsAdded] = useState(false);
 
   const handleAddToCart = () => {
-    // The tool output has every Product field the cart uses; fill in the two it doesn't return.
+    // The tool output has every Product field the cart uses except createdAt.
     const cartProduct: Product = {
       id: product.id,
       name: product.name,
@@ -92,7 +93,7 @@ function ProductDetailsCard({
       category: product.category,
       images: product.images,
       tags: product.tags,
-      featured: false,
+      featured: product.featured,
       createdAt: "",
     };
     addToCart(cartProduct, 1);
