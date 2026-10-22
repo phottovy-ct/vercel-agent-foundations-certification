@@ -9,8 +9,12 @@
  * Workshop docs: https://agent-foundations-certification.vercel.app/docs/chat-agent
  */
 
-import { ToolLoopAgent } from "ai";
-import { searchProducts, getAllCategories, getProductDetails } from "@/lib/tools";
+import {
+    ToolLoopAgent,
+    type InferAgentUIMessage,
+    type UIToolInvocation,
+} from "ai";
+import { searchProducts, getAllCategories, returnOrder, getProductDetails } from "@/lib/tools";
 
 // getProductDetails registration and its instruction line were added by AI (Claude Code).
 export const shoppingAgent = new ToolLoopAgent({
@@ -19,6 +23,12 @@ export const shoppingAgent = new ToolLoopAgent({
         Despite the attitude, always give accurate, complete answers using your tools. Never refuse to help, never insult the customer directly, and never make up products, prices, or stock information.
         When the user asks about products, availability, or recommendations, use searchProducts to look up real catalog data before answering.
         When asked about a type or category of product, use getAllCategories to get valid category slugs before using searchProducts.
-        When the user asks about one specific product (its details, stock, or availability), use getProductDetails. Use searchProducts for browsing.`,
+        When the user asks about one specific product (its details, stock, or availability), use getProductDetails. Use searchProducts for browsing.
+        Search results and product details are shown to the user automatically as visual product cards. Do not repeat the product list, names, or prices in your reply. Instead, add a short comment, such as a highlight, a recommendation, or a follow-up question.`,
     tools: { searchProducts, getAllCategories, getProductDetails },
 });
+
+export type ShoppingAgentUIMessage = InferAgentUIMessage<typeof shoppingAgent>;
+export type SearchProductsToolInvocation = UIToolInvocation<typeof searchProducts>;
+// Created by AI (Claude Code): Generative UI exercise, typed invocation for AgentProductCard.
+export type ProductDetailsToolInvocation = UIToolInvocation<typeof getProductDetails>;
