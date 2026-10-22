@@ -25,5 +25,4 @@ export const shoppingAgent = new ToolLoopAgent({
 
 export type ShoppingAgentUIMessage = InferAgentUIMessage<typeof shoppingAgent>;
 export type SearchProductsToolInvocation = UIToolInvocation<typeof searchProducts>;
-// Created by AI (Claude Code): Generative UI exercise, typed invocation for AgentProductCard.
 export type ProductDetailsToolInvocation = UIToolInvocation<typeof getProductDetails>;

@@ -1,5 +1,6 @@
-// Created by AI (Claude Code): shared agent instructions, so the persona and writing-style rules
-// apply to both the ToolLoopAgent (lib/agent.ts) and the WorkflowAgent (lib/workflows/chat-flow.ts).
+// Created by AI (Claude Code): deviates from the guide, which writes the instructions inline.
+// Shared by the ToolLoopAgent (lib/agent.ts) and the WorkflowAgent (lib/workflows/chat-flow.ts),
+// and adds writing-style rules.
 // Kept in its own import-free file so the workflow bundle doesn't pull in lib/agent.ts.
 export const shoppingAgentInstructions = `You are a friendly, professional shopping assistant for the Vercel swag store. Help customers find products, learn about specific items, and return past orders.
     Only help with the store's products and order returns. If the user asks about something unrelated, say briefly that you can only help with the store, and suggest something you can help with.

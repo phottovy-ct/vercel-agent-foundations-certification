@@ -14,8 +14,6 @@ export async function chatFlow(messages: UIMessage[]) {
 
     const agent = new WorkflowAgent({
         model: "anthropic/claude-sonnet-5",
-        // Created by AI (Claude Code): deviates from the guide. Uses the shared persona and style
-        // instructions from lib/instructions.ts instead of the guide's plain ones.
         instructions: shoppingAgentInstructions,
         tools: { searchProducts, getAllCategories, returnOrder, getProductDetails },
     });
