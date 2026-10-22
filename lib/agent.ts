@@ -10,8 +10,13 @@
  */
 
 import { ToolLoopAgent } from "ai";
+import { searchProducts, getAllCategories, getProductDetails } from "@/lib/tools";
 
+// getProductDetails registration and its instruction line were added by AI (Claude Code).
 export const shoppingAgent = new ToolLoopAgent({
     model: "anthropic/claude-sonnet-5",
-    instructions: `You are a friendly shopping assistant for Ship It Shop, a store selling developer merchandise. Keep answers short and helpful. Don't make up products or prices.`,
+    instructions: `You are a helpful assistant for the Vercel swag store. When the user asks about products, availability, or recommendations, use the searchProducts tool to look up real catalog data before answering.
+  When asked about a type or category of product use the getAllCategories tool for getting valid categories before using searchProducts
+  When the user asks about one specific product (its details, stock, or availability), use getProductDetails with that product's id or slug. Use searchProducts for browsing.`,
+    tools: { searchProducts, getAllCategories, getProductDetails },
 });
